@@ -2,15 +2,13 @@
   "name": "gta-news-bot",
   "version": "1.0.0",
   "main": "index.js",
-  "type": "module",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "discord.js": "^14.0.3",
     "dotenv": "^17.2.0",
-    "puppeteer-core": "^10.1.0",
-    "chrome-aws-lambda": "^10.1.0",
-    "node-fetch": "^3.3.1"
+    "node-fetch": "^3.3.1",
+    "cheerio": "^1.0.0-rc.12"
   }
 }
