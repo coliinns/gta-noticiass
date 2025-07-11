@@ -1,9 +1,7 @@
+import 'dotenv/config';
 import { Client, GatewayIntentBits, EmbedBuilder } from 'discord.js';
 import fetch from 'node-fetch';
-import dotenv from 'dotenv';
-import cheerio from 'cheerio';
-
-dotenv.config();
+import { load } from 'cheerio';
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
@@ -12,7 +10,7 @@ let lastPostedLink = "";
 client.once('ready', () => {
   console.log(`✅ Bot online: ${client.user.tag}`);
   checkNews();
-  setInterval(checkNews, 5 * 60 * 1000); // verifica a cada 5 minutos
+  setInterval(checkNews, 5 * 60 * 1000); // checa a cada 5 minutos
 });
 
 async function checkNews() {
@@ -20,9 +18,10 @@ async function checkNews() {
     console.log("🔍 Buscando notícias via fetch + cheerio...");
 
     const res = await fetch("https://www.rockstargames.com/newswire");
-    const html = await res.text();
+    if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
 
-    const $ = cheerio.load(html); // AGORA deve funcionar sem erro
+    const html = await res.text();
+    const $ = load(html);
 
     const newsItems = $(".NewswireList-item");
     console.log(`🧾 Total de notícias encontradas: ${newsItems.length}`);
@@ -32,19 +31,18 @@ async function checkNews() {
 
       const title = el.find(".NewswireList-title").text().trim();
       const linkPartial = el.find("a").attr("href");
+      if (!linkPartial) continue;
       const link = "https://www.rockstargames.com" + linkPartial;
 
-      if (!title.toLowerCase().includes("gta online")) continue;
+      if (!title.toLowerCase().includes("gta online")) continue; // só GTA Online
 
-      if (link === lastPostedLink) {
-        console.log("📰 Notícia já postada antes. Parando.");
-        break;
-      }
+      if (link === lastPostedLink) break; // já postamos
 
       lastPostedLink = link;
 
       const img = el.find("img").attr("src") || null;
       const summary = el.find(".NewswireList-summary").text().trim();
+
       const translated = await translateText(summary, "pt");
 
       const embed = new EmbedBuilder()
@@ -60,7 +58,7 @@ async function checkNews() {
       await channel.send({ embeds: [embed] });
 
       console.log("📰 Notícia postada:", title);
-      break; // só posta a notícia mais recente
+      break; // só posta a notícia mais recente por execução
     }
   } catch (err) {
     console.error("🚨 Erro ao buscar ou enviar notícia:", err);
