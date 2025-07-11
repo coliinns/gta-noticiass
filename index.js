@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits, EmbedBuilder } from 'discord.js';
 import fetch from 'node-fetch';
-import dotenv from 'dotenv';
 import chromium from 'chrome-aws-lambda';
+import dotenv from 'dotenv';
 
 dotenv.config();
 
@@ -10,11 +10,11 @@ const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.once('ready', () => {
   console.log(`✅ Bot online: ${client.user.tag}`);
   checkNews();
-  setInterval(checkNews, 5 * 60 * 1000); // a cada 5 minutos
+  setInterval(checkNews, 6 * 60 * 60 * 1000); // a cada 6 horas
 });
 
 async function checkNews() {
-  console.log('🔍 Iniciando Puppeteer...');
+  console.log("🔍 Buscando notícias via Puppeteer...");
 
   let browser;
   try {
@@ -26,33 +26,28 @@ async function checkNews() {
     });
 
     const page = await browser.newPage();
-    await page.goto("https://www.rockstargames.com/newswire", { waitUntil: 'domcontentloaded' });
-
-    const noticias = await page.evaluate(() => {
-      const cards = document.querySelectorAll(".NewswireList-item");
-      const resultados = [];
-
-      for (const card of cards) {
-        const titulo = card.querySelector(".NewswireList-title")?.textContent?.trim() || "";
-        const resumo = card.querySelector(".NewswireList-summary")?.textContent?.trim() || "";
-        const imagem = card.querySelector("img")?.src || "";
-        const link = "https://www.rockstargames.com" + (card.querySelector("a")?.getAttribute("href") || "");
-
-        if (titulo.toLowerCase().includes("gta online")) {
-          resultados.push({ titulo, resumo, imagem, link });
-          break; // só 1 notícia
-        }
-      }
-
-      return resultados;
+    await page.goto("https://www.rockstargames.com/newswire", {
+      waitUntil: "domcontentloaded",
     });
 
-    if (noticias.length === 0) {
-      console.log("⚠️ Nenhuma notícia GTA Online encontrada.");
+    const noticia = await page.evaluate(() => {
+      const el = document.querySelector(".NewswireList-item");
+      if (!el) return null;
+
+      const titulo = el.querySelector(".NewswireList-title")?.textContent?.trim();
+      const resumo = el.querySelector(".NewswireList-summary")?.textContent?.trim();
+      const imagem = el.querySelector("img")?.src;
+      const link = "https://www.rockstargames.com" + el.querySelector("a")?.getAttribute("href");
+
+      if (!titulo.toLowerCase().includes("gta online")) return null;
+
+      return { titulo, resumo, imagem, link };
+    });
+
+    if (!noticia) {
+      console.log("⚠️ Nenhuma notícia de GTA Online encontrada.");
       return;
     }
-
-    const noticia = noticias[0];
 
     const embed = new EmbedBuilder()
       .setTitle(noticia.titulo)
@@ -67,6 +62,7 @@ async function checkNews() {
     await channel.send({ embeds: [embed] });
 
     console.log("📰 Notícia postada:", noticia.titulo);
+
   } catch (err) {
     console.error("🚨 Falha ao buscar ou enviar notícia:", err);
   } finally {
