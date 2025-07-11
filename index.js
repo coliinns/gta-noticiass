@@ -1,7 +1,7 @@
-// index.js
 import { Client, GatewayIntentBits, EmbedBuilder } from 'discord.js';
 import fetch from 'node-fetch';
 import dotenv from 'dotenv';
+import cheerio from 'cheerio';
 
 dotenv.config();
 
@@ -19,13 +19,10 @@ async function checkNews() {
   try {
     console.log("🔍 Buscando notícias via fetch + cheerio...");
 
-    // Busca a página da Rockstar Newswire
     const res = await fetch("https://www.rockstargames.com/newswire");
     const html = await res.text();
 
-    // Carregando cheerio para parsear o HTML
-    const cheerio = (await import('cheerio')).default;
-    const $ = cheerio.load(html);
+    const $ = cheerio.load(html); // AGORA deve funcionar sem erro
 
     const newsItems = $(".NewswireList-item");
     console.log(`🧾 Total de notícias encontradas: ${newsItems.length}`);
@@ -37,7 +34,6 @@ async function checkNews() {
       const linkPartial = el.find("a").attr("href");
       const link = "https://www.rockstargames.com" + linkPartial;
 
-      // Filtra só notícias de GTA Online (case insensitive)
       if (!title.toLowerCase().includes("gta online")) continue;
 
       if (link === lastPostedLink) {
@@ -47,16 +43,10 @@ async function checkNews() {
 
       lastPostedLink = link;
 
-      // Pega imagem da notícia
       const img = el.find("img").attr("src") || null;
-
-      // Pega o resumo do texto da notícia
       const summary = el.find(".NewswireList-summary").text().trim();
-
-      // Traduz o resumo para português
       const translated = await translateText(summary, "pt");
 
-      // Cria embed e envia
       const embed = new EmbedBuilder()
         .setTitle(title)
         .setDescription(translated)
@@ -70,7 +60,7 @@ async function checkNews() {
       await channel.send({ embeds: [embed] });
 
       console.log("📰 Notícia postada:", title);
-      break; // só posta a notícia mais recente por rodada
+      break; // só posta a notícia mais recente
     }
   } catch (err) {
     console.error("🚨 Erro ao buscar ou enviar notícia:", err);
